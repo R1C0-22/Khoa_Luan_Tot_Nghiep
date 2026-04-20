@@ -15,6 +15,23 @@ from pathlib import Path
 from typing import Any
 
 
+def should_save_experiment() -> bool:
+    """Return whether evaluation scripts should persist run artifacts."""
+    raw = os.environ.get("SAVE_EXPERIMENT", "1").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def base_meta(script_name: str) -> dict[str, Any]:
+    """Common metadata shared by evaluation scripts."""
+    return {
+        "script": script_name,
+        "llm_provider": os.environ.get("LLM_PROVIDER", ""),
+        "hf_model_id": os.environ.get("HF_MODEL_ID", ""),
+        "hf_tokenizer_id": os.environ.get("HF_TOKENIZER_ID", ""),
+        "eval_filter": os.environ.get("EVAL_FILTER", "none"),
+    }
+
+
 def make_run_dir(experiment_name: str) -> Path:
     """Create and return a timestamped run directory."""
     root = os.environ.get("EXPERIMENT_ROOT", "results").strip() or "results"

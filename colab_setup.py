@@ -265,6 +265,7 @@ def verify_torch_install() -> None:
 
 def setup(
     model: str = "qwen",
+    tokenizer_id: str | None = None,
     load_4bit: bool = True,
     max_tokens: int = 200,
     data_dir: str = DEFAULT_DATA_DIR,
@@ -277,6 +278,8 @@ def setup(
     
     Args:
         model: "qwen", "llama", or full HF model ID
+        tokenizer_id: Optional tokenizer override (useful for Llama tokenizer
+            compatibility experiments, e.g. older tokenizer variants).
         load_4bit: Use 4-bit quantization (default True to prevent OOM)
         max_tokens: Max new tokens for generation (reduced from 256 to prevent OOM)
         data_dir: Dataset directory relative to repo root
@@ -301,6 +304,11 @@ def setup(
     os.environ["LLM_PROVIDER"] = "hf"
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     os.environ["HF_MODEL_ID"] = model_id
+    if tokenizer_id and tokenizer_id.strip():
+        os.environ["HF_TOKENIZER_ID"] = tokenizer_id.strip()
+    else:
+        os.environ.pop("HF_TOKENIZER_ID", None)
+    os.environ.setdefault("HF_USE_FAST_TOKENIZER", "1")
     os.environ["HF_TRUST_REMOTE_CODE"] = "1" if _needs_hf_trust_remote_code(model_id) else "0"
     # InternLM2 remote code can fail on KV-cache logprob path with newer
     # transformers cache classes (DynamicCache API mismatch). Keep logprob
@@ -368,6 +376,10 @@ def setup(
     clear_gpu_memory()
     
     _log(f"[setup] model={model_id}")
+    _log(
+        f"[setup] tokenizer={os.environ.get('HF_TOKENIZER_ID', model_id)} "
+        f"(fast={os.environ.get('HF_USE_FAST_TOKENIZER', '1')})"
+    )
     _log(
         f"[setup] trust_remote_code={os.environ.get('HF_TRUST_REMOTE_CODE')} "
         f"logprob_kv_cache={os.environ.get('HF_LOGPROB_KV_CACHE')} "

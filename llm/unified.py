@@ -271,11 +271,14 @@ def _load_huggingface_model(model_id: str) -> None:
     trust_remote = _env_truthy("HF_TRUST_REMOTE_CODE", False)
     load_4bit = _env_truthy("HF_LOAD_IN_4BIT", True)
 
-    _log(f"[llm] Loading tokenizer...")
+    tokenizer_id = os.environ.get("HF_TOKENIZER_ID", "").strip() or model_id
+    use_fast_tok = _env_truthy("HF_USE_FAST_TOKENIZER", True)
+    _log(f"[llm] Loading tokenizer: {tokenizer_id} (use_fast={use_fast_tok})")
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id,
+        tokenizer_id,
         token=token,
         trust_remote_code=trust_remote,
+        use_fast=use_fast_tok,
     )
     if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
         tokenizer.pad_token = tokenizer.eos_token

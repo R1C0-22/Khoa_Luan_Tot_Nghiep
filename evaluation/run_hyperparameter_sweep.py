@@ -16,7 +16,13 @@ import os
 from itertools import product
 
 from colab_setup import test_prediction_metrics
-from evaluation.experiment_io import make_run_dir, write_csv, write_json
+from evaluation.experiment_io import (
+    base_meta,
+    make_run_dir,
+    should_save_experiment,
+    write_csv,
+    write_json,
+)
 from evaluation.runtime import ensure_eval_runtime, patched_env
 
 
@@ -71,12 +77,11 @@ def main() -> None:
             f"{row['evaluated']},{row['skipped']}"
         )
 
-    if os.environ.get("SAVE_EXPERIMENT", "1").strip() in {"1", "true", "True"}:
+    if should_save_experiment():
         run_dir = make_run_dir("hyperparameter_sweep")
-        write_json(
-            run_dir / "meta.json",
+        meta = base_meta("evaluation.run_hyperparameter_sweep")
+        meta.update(
             {
-                "script": "evaluation.run_hyperparameter_sweep",
                 "n_queries": n_queries,
                 "sample_size": sample_size,
                 "grid": {
@@ -84,10 +89,11 @@ def main() -> None:
                     "l_values": l_values,
                     "alpha_values": a_values,
                 },
-                "eval_filter": os.environ.get("EVAL_FILTER", "none"),
-                "llm_provider": os.environ.get("LLM_PROVIDER", ""),
-                "hf_model_id": os.environ.get("HF_MODEL_ID", ""),
-            },
+            }
+        )
+        write_json(
+            run_dir / "meta.json",
+            meta,
         )
         write_csv(run_dir / "metrics.csv", rows)
         print(f"\nSaved artifacts to: {run_dir}")
