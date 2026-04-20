@@ -62,6 +62,9 @@ DEFAULT_DATA_DIR = "data/ICEWS05-15"
 DEFAULT_REPO_URL = "https://github.com/R1C0-22/KLTN.git"
 
 MODELS = {
+    # Backward-compatible defaults used by existing notebooks.
+    "qwen": "Qwen/Qwen2.5-7B-Instruct",
+    "llama": "gradientai/Llama-3-8B-Instruct-262k",
     # Paper-scale aliases (AnRe appendix).
     "llama_262k": "gradientai/Llama-3-8B-Instruct-262k",
     "qwen2.5_7b": "Qwen/Qwen2.5-7B-Instruct",
@@ -70,6 +73,12 @@ MODELS = {
     "internlm2_20b": "internlm/internlm2-20b",
     "yi_6b_200k": "01-ai/Yi-6B-200K",
 }
+
+
+def _needs_hf_trust_remote_code(model_id: str) -> bool:
+    """InternLM/Yi families require HF trust_remote_code for loading."""
+    mid = model_id.strip().lower()
+    return ("internlm/" in mid) or ("internlm2" in mid) or ("01-ai/yi" in mid)
 
 
 def ensure_content_cwd() -> None:
@@ -286,6 +295,7 @@ def setup(
     os.environ["LLM_PROVIDER"] = "hf"
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     os.environ["HF_MODEL_ID"] = model_id
+    os.environ["HF_TRUST_REMOTE_CODE"] = "1" if _needs_hf_trust_remote_code(model_id) else "0"
     os.environ["HF_LOAD_IN_4BIT"] = "1" if effective_4bit else "0"
     os.environ["HF_MAX_NEW_TOKENS"] = str(max_tokens)
     # Final prediction: allow a bit more than generic max_tokens so the model can
