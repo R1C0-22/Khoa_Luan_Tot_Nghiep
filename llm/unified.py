@@ -217,13 +217,15 @@ def _normalize_rope_scaling_config(config: Any) -> Any:
     rope = getattr(config, "rope_scaling", None)
     if not isinstance(rope, dict):
         return config
-    if "type" in rope:
-        return config
-    rope_type = rope.get("rope_type")
-    if rope_type:
-        fixed = dict(rope)
-        fixed["type"] = rope_type
-        config.rope_scaling = fixed
+    fixed = dict(rope)
+    # Newer configs may use rope_type while some remote model code expects type.
+    if "type" not in fixed and "rope_type" in fixed:
+        fixed["type"] = fixed["rope_type"]
+    # Some remote implementations (e.g. InternLM2) assume rope_scaling["factor"]
+    # exists and crash with KeyError otherwise.
+    if "factor" not in fixed:
+        fixed["factor"] = 1.0
+    config.rope_scaling = fixed
     return config
 
 
