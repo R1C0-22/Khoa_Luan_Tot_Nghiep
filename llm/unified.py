@@ -77,6 +77,7 @@ def _hf_drop_fixed_max_length(model: Any) -> None:
 _hf_model: Any = None
 _hf_tokenizer: Any = None
 _hf_logged_first_generate: bool = False
+_hf_loaded_model_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +238,7 @@ def _normalize_rope_scaling_config(config: Any) -> Any:
 
 def _load_huggingface_model(model_id: str) -> None:
     """Load model + tokenizer once (4-bit by default for Colab T4)."""
-    global _hf_model, _hf_tokenizer
+    global _hf_model, _hf_tokenizer, _hf_loaded_model_id
 
     import torch
     
@@ -306,6 +307,7 @@ def _load_huggingface_model(model_id: str) -> None:
     _hf_drop_fixed_max_length(model)
     _hf_model = model
     _hf_tokenizer = tokenizer
+    _hf_loaded_model_id = model_id
     _log(f"[llm] Model loaded successfully")
 
 
@@ -323,7 +325,7 @@ def _clear_gpu_cache() -> None:
 
 def _call_huggingface(prompt: str) -> str:
     """Generate text using local HuggingFace model with proper memory management."""
-    global _hf_model, _hf_tokenizer
+    global _hf_model, _hf_tokenizer, _hf_loaded_model_id
     import gc
 
     model_id = os.environ.get("HF_MODEL_ID", "").strip()
@@ -333,7 +335,7 @@ def _call_huggingface(prompt: str) -> str:
             "meta-llama/Meta-Llama-3-8B-Instruct, Qwen/Qwen2.5-7B-Instruct"
         )
 
-    if _hf_model is None or _hf_tokenizer is None:
+    if _hf_model is None or _hf_tokenizer is None or _hf_loaded_model_id != model_id:
         _load_huggingface_model(model_id)
 
     import torch
@@ -387,7 +389,7 @@ def _call_huggingface(prompt: str) -> str:
     gen_cfg = GenerationConfig(
         max_new_tokens=max_new,
         do_sample=False,
-        use_cache=True,
+        use_cache=_env_truthy("HF_GENERATE_USE_CACHE", True),
         pad_token_id=tokenizer.pad_token_id,
         eos_token_id=getattr(tokenizer, "eos_token_id", None),
     )
@@ -735,14 +737,14 @@ def _logprobs_huggingface(prompt: str, candidate_labels: list[str]) -> list[floa
 
     Fast path (less accurate): ``HF_LOGPROB_FAST=1`` scores by first subword only.
     """
-    global _hf_model, _hf_tokenizer
+    global _hf_model, _hf_tokenizer, _hf_loaded_model_id
     import gc
 
     model_id = os.environ.get("HF_MODEL_ID", "").strip()
     if not model_id:
         raise EnvironmentError("HF_MODEL_ID is not set.")
 
-    if _hf_model is None or _hf_tokenizer is None:
+    if _hf_model is None or _hf_tokenizer is None or _hf_loaded_model_id != model_id:
         _load_huggingface_model(model_id)
 
     import torch

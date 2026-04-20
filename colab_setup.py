@@ -87,6 +87,12 @@ def _disable_hf_kv_logprob(model_id: str) -> bool:
     return ("internlm/" in mid) or ("internlm2" in mid)
 
 
+def _disable_hf_generate_kv_cache(model_id: str) -> bool:
+    """Disable generate() KV-cache for model families with remote-code cache issues."""
+    mid = model_id.strip().lower()
+    return ("internlm/" in mid) or ("internlm2" in mid)
+
+
 def ensure_content_cwd() -> None:
     """Reset process cwd to ``/content`` (fixes Colab shells after a deleted folder)."""
     if Path("/content").is_dir():
@@ -306,6 +312,7 @@ def setup(
     # transformers cache classes (DynamicCache API mismatch). Keep logprob
     # scoring enabled but use the no-KV fallback path for stability.
     os.environ["HF_LOGPROB_KV_CACHE"] = "0" if _disable_hf_kv_logprob(model_id) else "1"
+    os.environ["HF_GENERATE_USE_CACHE"] = "0" if _disable_hf_generate_kv_cache(model_id) else "1"
     os.environ["HF_LOAD_IN_4BIT"] = "1" if effective_4bit else "0"
     os.environ["HF_MAX_NEW_TOKENS"] = str(max_tokens)
     # Final prediction: allow a bit more than generic max_tokens so the model can
@@ -368,7 +375,8 @@ def setup(
     _log(f"[setup] model={model_id}")
     _log(
         f"[setup] trust_remote_code={os.environ.get('HF_TRUST_REMOTE_CODE')} "
-        f"logprob_kv_cache={os.environ.get('HF_LOGPROB_KV_CACHE')}"
+        f"logprob_kv_cache={os.environ.get('HF_LOGPROB_KV_CACHE')} "
+        f"generate_use_cache={os.environ.get('HF_GENERATE_USE_CACHE')}"
     )
     _log(
         f"[setup] 4bit_requested={load_4bit} 4bit_effective={effective_4bit}, max_tokens={max_tokens}"
