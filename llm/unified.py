@@ -221,6 +221,12 @@ def _normalize_rope_scaling_config(config: Any) -> Any:
     # Newer configs may use rope_type while some remote model code expects type.
     if "type" not in fixed and "rope_type" in fixed:
         fixed["type"] = fixed["rope_type"]
+    # Some remote model implementations (observed with InternLM2) do not
+    # recognize type="default". In that case, no scaling should be applied.
+    scaling_type = str(fixed.get("type", "")).strip().lower()
+    if scaling_type == "default":
+        config.rope_scaling = None
+        return config
     # Some remote implementations (e.g. InternLM2) assume rope_scaling["factor"]
     # exists and crash with KeyError otherwise.
     if "factor" not in fixed:
