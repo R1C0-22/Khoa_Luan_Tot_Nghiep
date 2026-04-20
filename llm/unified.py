@@ -206,6 +206,27 @@ def _env_truthy(name: str, default: bool = False) -> bool:
     return env_truthy(name, default)
 
 
+def _normalize_rope_scaling_config(config: Any) -> Any:
+    """Normalize rope_scaling schema across model/transformers versions.
+
+    Some remote model implementations (e.g. InternLM2) expect:
+      {"type": "...", "factor": ...}
+    while newer configs may provide:
+      {"rope_type": "...", "factor": ...}
+    """
+    rope = getattr(config, "rope_scaling", None)
+    if not isinstance(rope, dict):
+        return config
+    if "type" in rope:
+        return config
+    rope_type = rope.get("rope_type")
+    if rope_type:
+        fixed = dict(rope)
+        fixed["type"] = rope_type
+        config.rope_scaling = fixed
+    return config
+
+
 def _load_huggingface_model(model_id: str) -> None:
     """Load model + tokenizer once (4-bit by default for Colab T4)."""
     global _hf_model, _hf_tokenizer
@@ -215,7 +236,7 @@ def _load_huggingface_model(model_id: str) -> None:
     _log(f"[llm] Loading model: {model_id}")
     
     try:
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
     except Exception as exc:
         msg = str(exc)
         if "PyTorch and torchvision were compiled with different CUDA major versions" in msg:
@@ -251,6 +272,15 @@ def _load_huggingface_model(model_id: str) -> None:
         token=token,
         trust_remote_code=trust_remote,
     )
+    try:
+        cfg = AutoConfig.from_pretrained(
+            model_id,
+            token=token,
+            trust_remote_code=trust_remote,
+        )
+        model_kwargs["config"] = _normalize_rope_scaling_config(cfg)
+    except Exception:
+        pass
     if load_4bit:
         try:
             from transformers import BitsAndBytesConfig
