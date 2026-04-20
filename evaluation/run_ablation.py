@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 
 from colab_setup import test_prediction_metrics
+from evaluation.experiment_io import make_run_dir, write_csv, write_json
 from evaluation.runtime import ensure_eval_runtime, patched_env
 
 
@@ -99,6 +100,22 @@ def main() -> None:
             f"{r['hit@1_filtered']:.4f},{r['hit@10_filtered']:.4f},"
             f"{r['evaluated']},{r['skipped']}"
         )
+
+    if os.environ.get("SAVE_EXPERIMENT", "1").strip() in {"1", "true", "True"}:
+        run_dir = make_run_dir("ablation")
+        write_json(
+            run_dir / "meta.json",
+            {
+                "script": "evaluation.run_ablation",
+                "n_queries": n_queries,
+                "sample_size": sample_size,
+                "eval_filter": os.environ.get("EVAL_FILTER", "none"),
+                "llm_provider": os.environ.get("LLM_PROVIDER", ""),
+                "hf_model_id": os.environ.get("HF_MODEL_ID", ""),
+            },
+        )
+        write_csv(run_dir / "metrics.csv", rows)
+        print(f"\nSaved artifacts to: {run_dir}")
 
 
 if __name__ == "__main__":

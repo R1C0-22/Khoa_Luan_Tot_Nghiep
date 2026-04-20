@@ -1,13 +1,15 @@
-# DOI CHIEU 3 NGUON (THEO UU TIEN)
+# DOI CHIEU 4 NGUON (THEO UU TIEN)
 
 Tai lieu nay duoc doi chieu theo dung thu tu uu tien:
 1) `Document/De-Tai-2.pdf` (paper AnRe, ACL 2025) - NEN TANG COT LOI.
 2) `Code/IMPROVE.MD` - GOI CAI TIEN PHUC VU KHOA LUAN.
 3) `https://github.com/usc-isi-i2/isi-tkg-icl` - NGUON THAM KHAO DE FIX BUG/TOI UU MOT PHAN.
+4) `https://github.com/zjs123/TKG-Benchmark` - NGUON THAM KHAO DE CHUAN HOA THUC NGHIEM/OUTPUT.
 
 Ket luan dinh vi:
 - Code hien tai CHU YEU duoc xay tren (1) + (2).
 - (3) duoc dung o vai diem ky thuat de on dinh he thong, KHONG phai nguon cot loi cua de tai.
+- (4) duoc dung de chuan hoa artifact va quy trinh benchmark, KHONG thay doi logic cot loi AnRe.
 
 ---
 
@@ -60,22 +62,37 @@ Ket luan dinh vi:
 
 => Nguon (3) la bo tham chieu huu ich de sua bug, khong doi vai tro cot loi cua de tai.
 
+## 4) Vai tro thuc te cua (4) `zjs123/TKG-Benchmark`
+
+### A. Da tham khao va ap dung mot phan de chuan hoa thuc nghiem
+- Chuan hoa artifact thuc nghiem theo run directory: `results/<experiment>/<run_id>/meta.json` va `results/<experiment>/<run_id>/metrics.csv`.
+- Ap dung cho cac script danh gia: `evaluation.run_ablation`, `evaluation.run_hyperparameter_sweep`, `evaluation.run_posthoc_eval`.
+- Them metadata moi run de tai lap de dang: script name, so query, sample size, eval filter, provider/model.
+- Cho phep bat/tat luu artifact bang env: `SAVE_EXPERIMENT=1|0` (mac dinh bat).
+
+### B. Nhung gi CHUA (va KHONG bat buoc) phai dong bo theo repo benchmark
+- Khung train supervised cua benchmark (khong phu hop bai toan training-free AnRe hien tai).
+- Data format pickle/stamp-span task (khong thay the pipeline quadruple `(s, r, o, t)` dang dung).
+
+=> Nguon (4) duoc dung de nang tinh reproducibility va benchmark hygiene, khong doi vai tro cot loi cua de tai.
+
 ---
 
-## 4) Ket luan doi chieu theo uu tien 1 -> 2 -> 3
+## 5) Ket luan doi chieu theo uu tien 1 -> 2 -> 3 -> 4
 
 ### Tuyen bo hoc thuat (de dua vao mo ta khoa luan)
 - Nen tang phuong phap cua code la AnRe (nguon 1).
 - Huong cai tien va muc tieu bao cao den tu `IMPROVE.MD` (nguon 2).
 - `isi-tkg-icl` (nguon 3) chi dong vai tro tham khao ky thuat de giam bug va tang do on dinh khi trien khai.
+- `TKG-Benchmark` (nguon 4) chi dong vai tro tham khao chuan hoa quy trinh va artifact thuc nghiem.
 
 ### Cac diem nen nhan manh khi bao ve
 - Khung bai toan va module theo paper AnRe duoc giu nguyen tinh than.
 - Co bo cai tien thuc dung, giai quyet han che runtime/oom/parse sai.
 - Co thuc nghiem bo tro (ablation, sweep, cache benchmark) de chung minh gia tri ky thuat.
 
-## 5) Backlog tiep theo (neu can bo sung ky thuat)
+## 6) Backlog tiep theo (neu can bo sung ky thuat)
 
 - [ ] Them baseline recency/frequency de doi chieu tham khao (khong lam thay doi cot loi de tai).
 - [ ] Chuan hoa them 1 runner CLI de tai lap thuc nghiem nhanh.
-- [ ] Chot bo bang ket qua theo truc: base AnRe / +improve.md / +tham khao ky thuat tu repo 3.
+- [ ] Chot bo bang ket qua theo truc: base AnRe / +improve.md / +tham khao ky thuat tu repo 3 + chuan hoa artifact tu repo 4.

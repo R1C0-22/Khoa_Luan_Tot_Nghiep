@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 
+from evaluation.experiment_io import make_run_dir, write_csv, write_json
 from evaluation.eval_filters import (
     build_filter_index,
     compute_rank,
@@ -96,6 +97,32 @@ def main() -> None:
 
     print("eval_filter,records,evaluated,skipped,hit@1,hit@10")
     print(f"{eval_filter},{len(rows)},{evaluated},{skipped},{hit1:.4f},{hit10:.4f}")
+
+    if os.environ.get("SAVE_EXPERIMENT", "1").strip() in {"1", "true", "True"}:
+        run_dir = make_run_dir("posthoc_eval")
+        write_json(
+            run_dir / "meta.json",
+            {
+                "script": "evaluation.run_posthoc_eval",
+                "records_path": records_path,
+                "eval_filter": eval_filter,
+                "data_dir": data_dir,
+            },
+        )
+        write_csv(
+            run_dir / "metrics.csv",
+            [
+                {
+                    "eval_filter": eval_filter,
+                    "records": len(rows),
+                    "evaluated": evaluated,
+                    "skipped": skipped,
+                    "hit@1": round(hit1, 6),
+                    "hit@10": round(hit10, 6),
+                }
+            ],
+        )
+        print(f"Saved artifacts to: {run_dir}")
 
 
 if __name__ == "__main__":
