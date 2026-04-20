@@ -62,8 +62,13 @@ DEFAULT_DATA_DIR = "data/ICEWS05-15"
 DEFAULT_REPO_URL = "https://github.com/R1C0-22/KLTN.git"
 
 MODELS = {
-    "qwen": "Qwen/Qwen2.5-7B-Instruct",
-    "llama": "meta-llama/Meta-Llama-3-8B-Instruct",
+    # Paper-scale aliases (AnRe appendix).
+    "llama_262k": "gradientai/Llama-3-8B-Instruct-262k",
+    "qwen2.5_7b": "Qwen/Qwen2.5-7B-Instruct",
+    "mistral_7b": "mistralai/Mistral-7B-Instruct-v0.3",
+    "internlm2_7b": "internlm/internlm2-7b",
+    "internlm2_20b": "internlm/internlm2-20b",
+    "yi_6b_200k": "01-ai/Yi-6B-200K",
 }
 
 
