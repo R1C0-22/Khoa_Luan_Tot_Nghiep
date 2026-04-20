@@ -311,6 +311,12 @@ def _load_huggingface_model(model_id: str) -> None:
     _log(f"[llm] Model loaded successfully")
 
 
+def _ensure_huggingface_model_loaded(model_id: str) -> None:
+    """Load or reload HF model/tokenizer when target model changes."""
+    if _hf_model is None or _hf_tokenizer is None or _hf_loaded_model_id != model_id:
+        _load_huggingface_model(model_id)
+
+
 def _clear_gpu_cache() -> None:
     """Clear GPU cache to prevent OOM during repeated generations."""
     import gc
@@ -335,8 +341,7 @@ def _call_huggingface(prompt: str) -> str:
             "meta-llama/Meta-Llama-3-8B-Instruct, Qwen/Qwen2.5-7B-Instruct"
         )
 
-    if _hf_model is None or _hf_tokenizer is None or _hf_loaded_model_id != model_id:
-        _load_huggingface_model(model_id)
+    _ensure_huggingface_model_loaded(model_id)
 
     import torch
 
@@ -744,8 +749,7 @@ def _logprobs_huggingface(prompt: str, candidate_labels: list[str]) -> list[floa
     if not model_id:
         raise EnvironmentError("HF_MODEL_ID is not set.")
 
-    if _hf_model is None or _hf_tokenizer is None or _hf_loaded_model_id != model_id:
-        _load_huggingface_model(model_id)
+    _ensure_huggingface_model_loaded(model_id)
 
     import torch
 

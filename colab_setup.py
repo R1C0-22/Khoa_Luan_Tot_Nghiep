@@ -81,14 +81,8 @@ def _needs_hf_trust_remote_code(model_id: str) -> bool:
     return ("internlm/" in mid) or ("internlm2" in mid) or ("01-ai/yi" in mid)
 
 
-def _disable_hf_kv_logprob(model_id: str) -> bool:
-    """Disable KV-cache logprob path for model families with cache API mismatch."""
-    mid = model_id.strip().lower()
-    return ("internlm/" in mid) or ("internlm2" in mid)
-
-
-def _disable_hf_generate_kv_cache(model_id: str) -> bool:
-    """Disable generate() KV-cache for model families with remote-code cache issues."""
+def _is_internlm_family(model_id: str) -> bool:
+    """InternLM family detection for model-specific HF workarounds."""
     mid = model_id.strip().lower()
     return ("internlm/" in mid) or ("internlm2" in mid)
 
@@ -311,8 +305,9 @@ def setup(
     # InternLM2 remote code can fail on KV-cache logprob path with newer
     # transformers cache classes (DynamicCache API mismatch). Keep logprob
     # scoring enabled but use the no-KV fallback path for stability.
-    os.environ["HF_LOGPROB_KV_CACHE"] = "0" if _disable_hf_kv_logprob(model_id) else "1"
-    os.environ["HF_GENERATE_USE_CACHE"] = "0" if _disable_hf_generate_kv_cache(model_id) else "1"
+    disable_cache_paths = _is_internlm_family(model_id)
+    os.environ["HF_LOGPROB_KV_CACHE"] = "0" if disable_cache_paths else "1"
+    os.environ["HF_GENERATE_USE_CACHE"] = "0" if disable_cache_paths else "1"
     os.environ["HF_LOAD_IN_4BIT"] = "1" if effective_4bit else "0"
     os.environ["HF_MAX_NEW_TOKENS"] = str(max_tokens)
     # Final prediction: allow a bit more than generic max_tokens so the model can
