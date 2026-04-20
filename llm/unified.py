@@ -207,7 +207,7 @@ def _env_truthy(name: str, default: bool = False) -> bool:
     return env_truthy(name, default)
 
 
-def _normalize_rope_scaling_config(config: Any) -> Any:
+def _normalize_rope_scaling_config(config: Any, model_id: str) -> Any:
     """Normalize rope_scaling schema across model/transformers versions.
 
     Some remote model implementations (e.g. InternLM2) expect:
@@ -215,6 +215,11 @@ def _normalize_rope_scaling_config(config: Any) -> Any:
     while newer configs may provide:
       {"rope_type": "...", "factor": ...}
     """
+    mid = (model_id or "").strip().lower()
+    needs_remote_rope_fix = ("internlm/" in mid) or ("internlm2" in mid) or ("01-ai/yi" in mid)
+    if not needs_remote_rope_fix:
+        return config
+
     rope = getattr(config, "rope_scaling", None)
     if not isinstance(rope, dict):
         return config
@@ -287,7 +292,7 @@ def _load_huggingface_model(model_id: str) -> None:
             token=token,
             trust_remote_code=trust_remote,
         )
-        model_kwargs["config"] = _normalize_rope_scaling_config(cfg)
+        model_kwargs["config"] = _normalize_rope_scaling_config(cfg, model_id)
     except Exception:
         pass
     if load_4bit:
