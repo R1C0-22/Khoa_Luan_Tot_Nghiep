@@ -677,6 +677,54 @@ def _logprobs_huggingface_kv_cached(
     return scores
 
 
+def _logprobs_huggingface_full_forward_no_cache(
+    model: Any,
+    tokenizer: Any,
+    base_input_ids: Any,
+    base_attention_mask: Any | None,
+    candidate_labels: list[str],
+) -> list[float]:
+    """Fallback logprob scoring without KV cache.
+
+    Used for remote model implementations (e.g. InternLM2) where the
+    transformers cache API can be incompatible with past_key_values usage.
+    """
+    import torch
+
+    device = next(model.parameters()).device
+    scores: list[float] = []
+
+    for label in candidate_labels:
+        cont_ids = tokenizer.encode(label, add_special_tokens=False)
+        if not cont_ids:
+            scores.append(-1e9)
+            continue
+
+        cand = torch.tensor([cont_ids], dtype=base_input_ids.dtype, device=device)
+        input_ids = torch.cat([base_input_ids, cand], dim=1)
+
+        if base_attention_mask is not None:
+            cont_mask = torch.ones((1, len(cont_ids)), dtype=base_attention_mask.dtype, device=device)
+            attention_mask = torch.cat([base_attention_mask, cont_mask], dim=1)
+        else:
+            attention_mask = None
+
+        with torch.no_grad():
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
+            logits = outputs.logits
+
+        total = 0.0
+        base_len = int(base_input_ids.shape[1])
+        for j, tok in enumerate(cont_ids):
+            step_pos = base_len - 1 + j
+            step_lp = torch.log_softmax(logits[0, step_pos, :], dim=-1)
+            total += float(step_lp[tok].item())
+
+        scores.append(total / len(cont_ids))
+
+    return scores
+
+
 def _logprobs_huggingface(prompt: str, candidate_labels: list[str]) -> list[float]:
     """Get logprobs from HuggingFace model (paper §3.3).
 
@@ -731,10 +779,26 @@ def _logprobs_huggingface(prompt: str, candidate_labels: list[str]) -> list[floa
             return _logprobs_huggingface_first_token_only(
                 model, tokenizer, base_input_ids, base_attention_mask, candidate_labels,
             )
-
-        return _logprobs_huggingface_kv_cached(
-            model, tokenizer, base_input_ids, base_attention_mask, candidate_labels,
-        )
+        if not _env_truthy("HF_LOGPROB_KV_CACHE", True):
+            if _env_truthy("LLM_VERBOSE", False):
+                _log("[llm] logprob scoring: no-KV fallback enabled")
+            return _logprobs_huggingface_full_forward_no_cache(
+                model, tokenizer, base_input_ids, base_attention_mask, candidate_labels,
+            )
+        try:
+            return _logprobs_huggingface_kv_cached(
+                model, tokenizer, base_input_ids, base_attention_mask, candidate_labels,
+            )
+        except AttributeError as exc:
+            # InternLM2 remote code + newer transformers can fail with:
+            # DynamicCache.from_legacy_cache missing.
+            if "DynamicCache" in str(exc):
+                if _env_truthy("LLM_VERBOSE", False):
+                    _log("[llm] KV-cache logprob path incompatible; using no-KV fallback")
+                return _logprobs_huggingface_full_forward_no_cache(
+                    model, tokenizer, base_input_ids, base_attention_mask, candidate_labels,
+                )
+            raise
     finally:
         del base_input_ids, base_attention_mask, enc
         gc.collect()
